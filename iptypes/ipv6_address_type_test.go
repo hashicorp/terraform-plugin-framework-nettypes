@@ -46,6 +46,9 @@ func TestIPv6AddressTypeValidate(t *testing.T) {
 		"valid IPv6 address - middle double colon": {
 			in: tftypes.NewValue(tftypes.String, "2001:DB8::8:800:200C:417A"),
 		},
+		"valid IPv6 address - lowercase": {
+			in: tftypes.NewValue(tftypes.String, "2001:db8::8:800:200c:417a"),
+		},
 		"valid IPv6 address - IPv4-Mapped": {
 			in: tftypes.NewValue(tftypes.String, "::FFFF:192.168.255.255"),
 		},
