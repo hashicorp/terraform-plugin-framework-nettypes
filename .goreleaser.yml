@@ -1,6 +1,6 @@
 project_name: terraform-plugin-framework-nettypes
-build:
-  skip: true
+builds:
+  - skip: true
 milestones:
   - close: true
 release:
