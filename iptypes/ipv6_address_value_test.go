@@ -43,6 +43,11 @@ func TestIPv6AddressStringSemanticEquals(t *testing.T) {
 			givenIpAddr:   iptypes.NewIPv6AddressValue("0:0:0:0:0:0:0:0"),
 			expectedMatch: true,
 		},
+		"semantically equal - case insensitive": {
+			currentIpAddr: iptypes.NewIPv6AddressValue("2001:0DB8:0000:0000:0008:0800:0200C:417A"),
+			givenIpAddr:   iptypes.NewIPv6AddressValue("2001:0db8:0000:0000:0008:0800:0200c:417a"),
+			expectedMatch: true,
+		},
 		"semantically equal - IPv4-Mapped byte-for-byte match": {
 			currentIpAddr: iptypes.NewIPv6AddressValue("::FFFF:192.168.255.255"),
 			givenIpAddr:   iptypes.NewIPv6AddressValue("::FFFF:192.168.255.255"),
