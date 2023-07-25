@@ -37,6 +37,18 @@ func TestIPv4PrefixTypeValidate(t *testing.T) {
 		"valid IPv4 prefix - private": {
 			in: tftypes.NewValue(tftypes.String, "172.16.0.0/12"),
 		},
+		"invalid IPv4 prefix - invalid address no dots": {
+			in: tftypes.NewValue(tftypes.String, "192168255255/8"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv4 CIDR String Value",
+					"A string value was provided that is not valid IPv4 CIDR string format (RFC 4632).\n\n"+
+						"Given Value: 192168255255/8\n"+
+						"Error: netip.ParsePrefix(\"192168255255/8\"): ParseAddr(\"192168255255\"): unable to parse IP",
+				),
+			},
+		},
 		"invalid IPv4 prefix - invalid address with leading zeroes": {
 			in: tftypes.NewValue(tftypes.String, "127.0.0.000/8"),
 			expectedDiags: diag.Diagnostics{

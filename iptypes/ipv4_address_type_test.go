@@ -37,6 +37,18 @@ func TestIPv4AddressTypeValidate(t *testing.T) {
 		"valid IPv4 address - private": {
 			in: tftypes.NewValue(tftypes.String, "192.168.255.255"),
 		},
+		"invalid IPv4 address - no dots": {
+			in: tftypes.NewValue(tftypes.String, "192168255255"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv4 Address String Value",
+					"A string value was provided that is not valid IPv4 string format.\n\n"+
+						"Given Value: 192168255255\n"+
+						"Error: ParseAddr(\"192168255255\"): unable to parse IP",
+				),
+			},
+		},
 		"invalid IPv4 address - leading zeroes": {
 			in: tftypes.NewValue(tftypes.String, "127.000.000.001"),
 			expectedDiags: diag.Diagnostics{
