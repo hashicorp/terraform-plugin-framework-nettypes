@@ -1,0 +1,6 @@
+kind: FEATURES
+body: 'nettypes/cidrtypes: Add new IPv6Prefix custom type implementation, representing
+  an IPv6 CIDR string'
+time: 2023-07-25T14:27:32.298038-04:00
+custom:
+  Issue: "2"
