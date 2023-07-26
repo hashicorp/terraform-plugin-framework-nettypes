@@ -55,7 +55,7 @@ func TestIPv4AddressValueIPv4Address(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(diags, testCase.expectedDiags); diff != "" {
-				t.Errorf("Unexpected diagnostics (+got, -expected): %s", diff)
+				t.Errorf("Unexpected diagnostics (-got, +expected): %s", diff)
 			}
 		})
 	}

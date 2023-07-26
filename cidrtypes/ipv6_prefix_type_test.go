@@ -147,7 +147,7 @@ func TestIPv6PrefixTypeValidate(t *testing.T) {
 			diags := cidrtypes.IPv6PrefixType{}.Validate(context.Background(), testCase.in, path.Root("test"))
 
 			if diff := cmp.Diff(diags, testCase.expectedDiags); diff != "" {
-				t.Errorf("Unexpected diagnostics (+got, -expected): %s", diff)
+				t.Errorf("Unexpected diagnostics (-got, +expected): %s", diff)
 			}
 		})
 	}
