@@ -75,7 +75,6 @@ func (v IPv6Prefix) StringSemanticEquals(_ context.Context, newValuable basetype
 	newIpPrefix, _ := netip.ParsePrefix(newValue.ValueString())
 	currentIpPrefix, _ := netip.ParsePrefix(v.ValueString())
 
-	// TODO: is this the correct way to perform equality?
 	cidrMatch := currentIpPrefix.Addr() == newIpPrefix.Addr() && currentIpPrefix.Bits() == newIpPrefix.Bits()
 
 	return cidrMatch, diags

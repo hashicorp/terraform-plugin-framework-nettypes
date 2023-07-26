@@ -102,7 +102,6 @@ func (t IPv6PrefixType) Validate(ctx context.Context, in tftypes.Value, path pat
 		return diags
 	}
 
-	// TODO: is this correct way to determine IPv4 CIDR?
 	if ipPrefix.Addr().Is4() {
 		diags.AddAttributeError(
 			path,
@@ -114,7 +113,6 @@ func (t IPv6PrefixType) Validate(ctx context.Context, in tftypes.Value, path pat
 		return diags
 	}
 
-	// TODO: is this correct way to determine IPv6 CIDR?
 	if !ipPrefix.IsValid() || !ipPrefix.Addr().Is6() {
 		diags.AddAttributeError(
 			path,
