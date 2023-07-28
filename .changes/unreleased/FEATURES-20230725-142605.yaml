@@ -1,6 +1,0 @@
-kind: FEATURES
-body: 'nettypes/iptypes: Add new IPv4Address custom type implementation, representing
-  an IPv4 address string'
-time: 2023-07-25T14:26:05.095944-04:00
-custom:
-  Issue: "2"
