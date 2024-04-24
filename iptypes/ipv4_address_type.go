@@ -6,19 +6,15 @@ package iptypes
 import (
 	"context"
 	"fmt"
-	"net/netip"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/attr/xattr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 var (
 	_ basetypes.StringTypable = (*IPv4AddressType)(nil)
-	_ xattr.TypeWithValidate  = (*IPv4AddressType)(nil)
 )
 
 // IPv4AddressType is an attribute type that represents a valid IPv4 address string (dotted decimal, no leading zeroes). No semantic equality
@@ -46,81 +42,6 @@ func (t IPv4AddressType) Equal(o attr.Type) bool {
 	}
 
 	return t.StringType.Equal(other.StringType)
-}
-
-// Validate implements type validation. This type requires the value provided to be a String value that is a valid IPv4 address.
-// This utilizes the Go `net/netip` library for parsing so leading zeroes will be rejected as invalid.
-func (t IPv4AddressType) Validate(ctx context.Context, in tftypes.Value, path path.Path) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	if in.Type() == nil {
-		return diags
-	}
-
-	if !in.Type().Is(tftypes.String) {
-		err := fmt.Errorf("expected String value, received %T with value: %v", in, in)
-		diags.AddAttributeError(
-			path,
-			"IPv4 Address Type Validation Error",
-			"An unexpected error was encountered trying to validate an attribute value. This is always an error in the provider. "+
-				"Please report the following to the provider developer:\n\n"+err.Error(),
-		)
-		return diags
-	}
-
-	if !in.IsKnown() || in.IsNull() {
-		return diags
-	}
-
-	var valueString string
-
-	if err := in.As(&valueString); err != nil {
-		diags.AddAttributeError(
-			path,
-			"IPv4 Address Type Validation Error",
-			"An unexpected error was encountered trying to validate an attribute value. This is always an error in the provider. "+
-				"Please report the following to the provider developer:\n\n"+err.Error(),
-		)
-
-		return diags
-	}
-
-	ipAddr, err := netip.ParseAddr(valueString)
-	if err != nil {
-		diags.AddAttributeError(
-			path,
-			"Invalid IPv4 Address String Value",
-			"A string value was provided that is not valid IPv4 string format.\n\n"+
-				"Given Value: "+valueString+"\n"+
-				"Error: "+err.Error(),
-		)
-
-		return diags
-	}
-
-	if ipAddr.Is6() {
-		diags.AddAttributeError(
-			path,
-			"Invalid IPv4 Address String Value",
-			"An IPv6 string format was provided, string value must be IPv4 format.\n\n"+
-				"Given Value: "+valueString+"\n",
-		)
-
-		return diags
-	}
-
-	if !ipAddr.IsValid() || !ipAddr.Is4() {
-		diags.AddAttributeError(
-			path,
-			"Invalid IPv4 Address String Value",
-			"A string value was provided that is not valid IPv4 string format.\n\n"+
-				"Given Value: "+valueString+"\n",
-		)
-
-		return diags
-	}
-
-	return diags
 }
 
 // ValueFromString returns a StringValuable type given a StringValue.

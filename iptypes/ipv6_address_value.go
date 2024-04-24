@@ -9,13 +9,17 @@ import (
 	"net/netip"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/attr/xattr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 var (
 	_ basetypes.StringValuable                   = (*IPv6Address)(nil)
 	_ basetypes.StringValuableWithSemanticEquals = (*IPv6Address)(nil)
+	_ xattr.ValidateableAttribute                = (*IPv6Address)(nil)
+	_ function.ValidateableParameter             = (*IPv6Address)(nil)
 )
 
 // IPv6Address represents a valid IPv6 address string (RFC 4291). Semantic equality logic is defined for IPv6Address
@@ -78,6 +82,92 @@ func (v IPv6Address) StringSemanticEquals(_ context.Context, newValuable basetyp
 	currentIpAddr, _ := netip.ParseAddr(v.ValueString())
 
 	return currentIpAddr == newIpAddr, diags
+}
+
+// ValidateAttribute implements attribute value validation. This type requires the value provided to be a String
+// value that is a valid IPv6 address.
+func (v IPv6Address) ValidateAttribute(ctx context.Context, req xattr.ValidateAttributeRequest, resp *xattr.ValidateAttributeResponse) {
+	if v.IsUnknown() || v.IsNull() {
+		return
+	}
+
+	ipAddr, err := netip.ParseAddr(v.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid IPv6 Address String Value",
+			"A string value was provided that is not valid IPv6 string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n"+
+				"Error: "+err.Error(),
+		)
+
+		return
+	}
+
+	if ipAddr.Is4() {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid IPv6 Address String Value",
+			"An IPv4 string format was provided, string value must be IPv6 string format or IPv4-Mapped IPv6 string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
+
+	if !ipAddr.IsValid() || !ipAddr.Is6() {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid IPv6 Address String Value",
+			"A string value was provided that is not valid IPv6 string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
+}
+
+// ValidateParameter implements provider-defined function parameter value validation. This type requires the value provided
+// to be a String value that is a valid IPv6 address.
+func (v IPv6Address) ValidateParameter(ctx context.Context, req function.ValidateParameterRequest, resp *function.ValidateParameterResponse) {
+	if v.IsUnknown() || v.IsNull() {
+		return
+	}
+
+	ipAddr, err := netip.ParseAddr(v.ValueString())
+	if err != nil {
+		resp.Error = function.NewArgumentFuncError(
+			req.Position,
+			"Invalid IPv6 Address String Value: "+
+				"A string value was provided that is not valid IPv6 string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n"+
+				"Error: "+err.Error(),
+		)
+
+		return
+	}
+
+	if ipAddr.Is4() {
+		resp.Error = function.NewArgumentFuncError(
+			req.Position,
+			"Invalid IPv6 Address String Value: "+
+				"An IPv4 string format was provided, string value must be IPv6 string format or IPv4-Mapped IPv6 string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
+
+	if !ipAddr.IsValid() || !ipAddr.Is6() {
+		resp.Error = function.NewArgumentFuncError(
+			req.Position,
+			"Invalid IPv6 Address String Value: "+
+				"A string value was provided that is not valid IPv6 string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
 }
 
 // ValueIPv6Address calls netip.ParseAddr with the IPv6Address StringValue. A null or unknown value will produce an error diagnostic.

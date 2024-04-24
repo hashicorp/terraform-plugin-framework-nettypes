@@ -1,0 +1,6 @@
+kind: ENHANCEMENTS
+body: 'cidrtypes: Added `ValidateAttribute()` method to `IPv4Prefix` type, which supports
+  validating an attribute value'
+time: 2024-04-24T14:36:41.07215+01:00
+custom:
+  Issue: "55"

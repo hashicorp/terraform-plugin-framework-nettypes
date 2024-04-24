@@ -1,0 +1,6 @@
+kind: ENHANCEMENTS
+body: 'cidrtypes: Added `ValidateParameter()` method to `IPv4Prefix` type, which supports
+  validating a provider-defined function parameter value'
+time: 2024-04-24T14:41:39.617637+01:00
+custom:
+  Issue: "55"

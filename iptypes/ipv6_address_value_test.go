@@ -9,9 +9,13 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
+	"github.com/hashicorp/terraform-plugin-framework/attr/xattr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/function"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
 )
 
 func TestIPv6AddressStringSemanticEquals(t *testing.T) {
@@ -110,6 +114,218 @@ func TestIPv6AddressStringSemanticEquals(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(diags, testCase.expectedDiags); diff != "" {
+				t.Errorf("Unexpected diagnostics (-got, +expected): %s", diff)
+			}
+		})
+	}
+}
+
+func TestIPv6AddressValidateAttribute(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		addressValue  iptypes.IPv6Address
+		expectedDiags diag.Diagnostics
+	}{
+		"empty-struct": {
+			addressValue: iptypes.IPv6Address{},
+		},
+		"null": {
+			addressValue: iptypes.NewIPv6AddressNull(),
+		},
+		"unknown": {
+			addressValue: iptypes.NewIPv6AddressUnknown(),
+		},
+		"valid IPv6 address - unspecified": {
+			addressValue: iptypes.NewIPv6AddressValue("::"),
+		},
+		"valid IPv6 address - full": {
+			addressValue: iptypes.NewIPv6AddressValue("1:2:3:4:5:6:7:8"),
+		},
+		"valid IPv6 address - trailing double colon": {
+			addressValue: iptypes.NewIPv6AddressValue("FF01::"),
+		},
+		"valid IPv6 address - leading double colon": {
+			addressValue: iptypes.NewIPv6AddressValue("::8:800:200C:417A"),
+		},
+		"valid IPv6 address - middle double colon": {
+			addressValue: iptypes.NewIPv6AddressValue("2001:DB8::8:800:200C:417A"),
+		},
+		"valid IPv6 address - lowercase": {
+			addressValue: iptypes.NewIPv6AddressValue("2001:db8::8:800:200c:417a"),
+		},
+		"valid IPv6 address - IPv4-Mapped": {
+			addressValue: iptypes.NewIPv6AddressValue("::FFFF:192.168.255.255"),
+		},
+		"valid IPv6 address - IPv4-Compatible": {
+			addressValue: iptypes.NewIPv6AddressValue("::127.0.0.1"),
+		},
+		"invalid IPv6 address - invalid colon end": {
+			addressValue: iptypes.NewIPv6AddressValue("0:0:0:0:0:0:0:"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv6 Address String Value",
+					"A string value was provided that is not valid IPv6 string format (RFC 4291).\n\n"+
+						"Given Value: 0:0:0:0:0:0:0:\n"+
+						"Error: ParseAddr(\"0:0:0:0:0:0:0:\"): colon must be followed by more characters (at \":\")",
+				),
+			},
+		},
+		"invalid IPv6 address - too many colons": {
+			addressValue: iptypes.NewIPv6AddressValue("0:0::1::"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv6 Address String Value",
+					"A string value was provided that is not valid IPv6 string format (RFC 4291).\n\n"+
+						"Given Value: 0:0::1::\n"+
+						"Error: ParseAddr(\"0:0::1::\"): multiple :: in address (at \":\")",
+				),
+			},
+		},
+		"invalid IPv6 address - trailing numbers": {
+			addressValue: iptypes.NewIPv6AddressValue("0:0:0:0:0:0:0:1:99"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv6 Address String Value",
+					"A string value was provided that is not valid IPv6 string format (RFC 4291).\n\n"+
+						"Given Value: 0:0:0:0:0:0:0:1:99\n"+
+						"Error: ParseAddr(\"0:0:0:0:0:0:0:1:99\"): trailing garbage after address (at \"99\")",
+				),
+			},
+		},
+		"invalid IPv6 address - IPv4 address": {
+			addressValue: iptypes.NewIPv6AddressValue("127.0.0.1"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv6 Address String Value",
+					"An IPv4 string format was provided, string value must be IPv6 string format or IPv4-Mapped IPv6 string format (RFC 4291).\n\n"+
+						"Given Value: 127.0.0.1\n",
+				),
+			},
+		},
+	}
+
+	for name, testCase := range testCases {
+		name, testCase := name, testCase
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			resp := xattr.ValidateAttributeResponse{}
+
+			testCase.addressValue.ValidateAttribute(
+				context.Background(),
+				xattr.ValidateAttributeRequest{Path: path.Root("test")},
+				&resp,
+			)
+
+			if diff := cmp.Diff(resp.Diagnostics, testCase.expectedDiags); diff != "" {
+				t.Errorf("Unexpected diagnostics (-got, +expected): %s", diff)
+			}
+		})
+	}
+}
+
+func TestIPv6AddressValidateParameter(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		addressValue    iptypes.IPv6Address
+		expectedFuncErr *function.FuncError
+	}{
+		"empty-struct": {
+			addressValue: iptypes.IPv6Address{},
+		},
+		"null": {
+			addressValue: iptypes.NewIPv6AddressNull(),
+		},
+		"unknown": {
+			addressValue: iptypes.NewIPv6AddressUnknown(),
+		},
+		"valid IPv6 address - unspecified": {
+			addressValue: iptypes.NewIPv6AddressValue("::"),
+		},
+		"valid IPv6 address - full": {
+			addressValue: iptypes.NewIPv6AddressValue("1:2:3:4:5:6:7:8"),
+		},
+		"valid IPv6 address - trailing double colon": {
+			addressValue: iptypes.NewIPv6AddressValue("FF01::"),
+		},
+		"valid IPv6 address - leading double colon": {
+			addressValue: iptypes.NewIPv6AddressValue("::8:800:200C:417A"),
+		},
+		"valid IPv6 address - middle double colon": {
+			addressValue: iptypes.NewIPv6AddressValue("2001:DB8::8:800:200C:417A"),
+		},
+		"valid IPv6 address - lowercase": {
+			addressValue: iptypes.NewIPv6AddressValue("2001:db8::8:800:200c:417a"),
+		},
+		"valid IPv6 address - IPv4-Mapped": {
+			addressValue: iptypes.NewIPv6AddressValue("::FFFF:192.168.255.255"),
+		},
+		"valid IPv6 address - IPv4-Compatible": {
+			addressValue: iptypes.NewIPv6AddressValue("::127.0.0.1"),
+		},
+		"invalid IPv6 address - invalid colon end": {
+			addressValue: iptypes.NewIPv6AddressValue("0:0:0:0:0:0:0:"),
+			expectedFuncErr: function.NewArgumentFuncError(
+				0,
+				"Invalid IPv6 Address String Value: "+
+					"A string value was provided that is not valid IPv6 string format (RFC 4291).\n\n"+
+					"Given Value: 0:0:0:0:0:0:0:\n"+
+					"Error: ParseAddr(\"0:0:0:0:0:0:0:\"): colon must be followed by more characters (at \":\")",
+			),
+		},
+		"invalid IPv6 address - too many colons": {
+			addressValue: iptypes.NewIPv6AddressValue("0:0::1::"),
+			expectedFuncErr: function.NewArgumentFuncError(
+				0,
+				"Invalid IPv6 Address String Value: "+
+					"A string value was provided that is not valid IPv6 string format (RFC 4291).\n\n"+
+					"Given Value: 0:0::1::\n"+
+					"Error: ParseAddr(\"0:0::1::\"): multiple :: in address (at \":\")",
+			),
+		},
+		"invalid IPv6 address - trailing numbers": {
+			addressValue: iptypes.NewIPv6AddressValue("0:0:0:0:0:0:0:1:99"),
+			expectedFuncErr: function.NewArgumentFuncError(
+				0,
+				"Invalid IPv6 Address String Value: "+
+					"A string value was provided that is not valid IPv6 string format (RFC 4291).\n\n"+
+					"Given Value: 0:0:0:0:0:0:0:1:99\n"+
+					"Error: ParseAddr(\"0:0:0:0:0:0:0:1:99\"): trailing garbage after address (at \"99\")",
+			),
+		},
+		"invalid IPv6 address - IPv4 address": {
+			addressValue: iptypes.NewIPv6AddressValue("127.0.0.1"),
+			expectedFuncErr: function.NewArgumentFuncError(
+				0,
+				"Invalid IPv6 Address String Value: "+
+					"An IPv4 string format was provided, string value must be IPv6 string format or IPv4-Mapped IPv6 string format (RFC 4291).\n\n"+
+					"Given Value: 127.0.0.1\n",
+			),
+		},
+	}
+
+	for name, testCase := range testCases {
+		name, testCase := name, testCase
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			resp := function.ValidateParameterResponse{}
+
+			testCase.addressValue.ValidateParameter(
+				context.Background(),
+				function.ValidateParameterRequest{
+					Position: 0,
+				},
+				&resp,
+			)
+
+			if diff := cmp.Diff(resp.Error, testCase.expectedFuncErr); diff != "" {
 				t.Errorf("Unexpected diagnostics (-got, +expected): %s", diff)
 			}
 		})

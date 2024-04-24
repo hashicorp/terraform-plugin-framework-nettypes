@@ -9,13 +9,17 @@ import (
 	"net/netip"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/attr/xattr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 var (
 	_ basetypes.StringValuable                   = (*IPv6Prefix)(nil)
 	_ basetypes.StringValuableWithSemanticEquals = (*IPv6Prefix)(nil)
+	_ xattr.ValidateableAttribute                = (*IPv6Prefix)(nil)
+	_ function.ValidateableParameter             = (*IPv6Prefix)(nil)
 )
 
 // IPv6Prefix represents a valid IPv6 CIDR string (RFC 4291). Semantic equality logic is defined for IPv6Prefix
@@ -78,6 +82,92 @@ func (v IPv6Prefix) StringSemanticEquals(_ context.Context, newValuable basetype
 	cidrMatch := currentIpPrefix.Addr() == newIpPrefix.Addr() && currentIpPrefix.Bits() == newIpPrefix.Bits()
 
 	return cidrMatch, diags
+}
+
+// ValidateAttribute implements attribute value validation. This type requires the value provided to be a String
+// value that is a valid IPv6 CIDR.
+func (v IPv6Prefix) ValidateAttribute(ctx context.Context, req xattr.ValidateAttributeRequest, resp *xattr.ValidateAttributeResponse) {
+	if v.IsUnknown() || v.IsNull() {
+		return
+	}
+
+	ipPrefix, err := netip.ParsePrefix(v.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid IPv6 CIDR String Value",
+			"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n"+
+				"Error: "+err.Error(),
+		)
+
+		return
+	}
+
+	if ipPrefix.Addr().Is4() {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid IPv6 CIDR String Value",
+			"An IPv4 CIDR string format was provided, string value must be IPv6 CIDR string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
+
+	if !ipPrefix.IsValid() || !ipPrefix.Addr().Is6() {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid IPv6 CIDR String Value",
+			"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
+}
+
+// ValidateParameter implements provider-defined function parameter value validation. This type requires the value
+// provided to be a String value that is a valid IPv6 CIDR.
+func (v IPv6Prefix) ValidateParameter(ctx context.Context, req function.ValidateParameterRequest, resp *function.ValidateParameterResponse) {
+	if v.IsUnknown() || v.IsNull() {
+		return
+	}
+
+	ipPrefix, err := netip.ParsePrefix(v.ValueString())
+	if err != nil {
+		resp.Error = function.NewArgumentFuncError(
+			req.Position,
+			"Invalid IPv6 CIDR String Value: "+
+				"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n"+
+				"Error: "+err.Error(),
+		)
+
+		return
+	}
+
+	if ipPrefix.Addr().Is4() {
+		resp.Error = function.NewArgumentFuncError(
+			req.Position,
+			"Invalid IPv6 CIDR String Value: "+
+				"An IPv4 CIDR string format was provided, string value must be IPv6 CIDR string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
+
+	if !ipPrefix.IsValid() || !ipPrefix.Addr().Is6() {
+		resp.Error = function.NewArgumentFuncError(
+			req.Position,
+			"Invalid IPv6 CIDR String Value: "+
+				"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
 }
 
 // ValueIPv6Prefix calls netip.ParsePrefix with the IPv6Prefix StringValue. A null or unknown value will produce an error diagnostic.
