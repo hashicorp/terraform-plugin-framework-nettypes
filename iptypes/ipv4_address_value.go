@@ -8,12 +8,16 @@ import (
 	"net/netip"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/attr/xattr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 var (
-	_ basetypes.StringValuable = (*IPv4Address)(nil)
+	_ basetypes.StringValuable       = (*IPv4Address)(nil)
+	_ xattr.ValidateableAttribute    = (*IPv4Address)(nil)
+	_ function.ValidateableParameter = (*IPv4Address)(nil)
 )
 
 // IPv4Address represents a valid IPv4 address string (dotted decimal, no leading zeroes). No semantic equality
@@ -36,6 +40,94 @@ func (v IPv4Address) Equal(o attr.Value) bool {
 	}
 
 	return v.StringValue.Equal(other.StringValue)
+}
+
+// ValidateAttribute implements attribute value validation. This type requires the value provided to be a String
+// value that is a valid IPv4 address. This utilizes the Go `net/netip` library for parsing so leading zeroes
+// will be rejected as invalid.
+func (v IPv4Address) ValidateAttribute(ctx context.Context, req xattr.ValidateAttributeRequest, resp *xattr.ValidateAttributeResponse) {
+	if v.IsUnknown() || v.IsNull() {
+		return
+	}
+
+	ipAddr, err := netip.ParseAddr(v.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid IPv4 Address String Value",
+			"A string value was provided that is not valid IPv4 string format.\n\n"+
+				"Given Value: "+v.ValueString()+"\n"+
+				"Error: "+err.Error(),
+		)
+
+		return
+	}
+
+	if ipAddr.Is6() {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid IPv4 Address String Value",
+			"An IPv6 string format was provided, string value must be IPv4 format.\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
+
+	if !ipAddr.IsValid() || !ipAddr.Is4() {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid IPv4 Address String Value",
+			"A string value was provided that is not valid IPv4 string format.\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
+}
+
+// ValidateParameter implements provider-defined function parameter value validation. This type requires the value
+// provided to be a String value that is a valid IPv4 address. This utilizes the Go `net/netip` library for
+// parsing so leading zeroes will be rejected as invalid.
+func (v IPv4Address) ValidateParameter(ctx context.Context, req function.ValidateParameterRequest, resp *function.ValidateParameterResponse) {
+	if v.IsUnknown() || v.IsNull() {
+		return
+	}
+
+	ipAddr, err := netip.ParseAddr(v.ValueString())
+	if err != nil {
+		resp.Error = function.NewArgumentFuncError(
+			req.Position,
+			"Invalid IPv4 Address String Value: "+
+				"A string value was provided that is not valid IPv4 string format.\n\n"+
+				"Given Value: "+v.ValueString()+"\n"+
+				"Error: "+err.Error(),
+		)
+
+		return
+	}
+
+	if ipAddr.Is6() {
+		resp.Error = function.NewArgumentFuncError(
+			req.Position,
+			"Invalid IPv4 Address String Value: "+
+				"An IPv6 string format was provided, string value must be IPv4 format.\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
+
+	if !ipAddr.IsValid() || !ipAddr.Is4() {
+		resp.Error = function.NewArgumentFuncError(
+			req.Position,
+			"Invalid IPv4 Address String Value: "+
+				"A string value was provided that is not valid IPv4 string format.\n\n"+
+				"Given Value: "+v.ValueString()+"\n",
+		)
+
+		return
+	}
 }
 
 // ValueIPv4Address calls netip.ParseAddr with the IPv4Address StringValue. A null or unknown value will produce an error diagnostic.

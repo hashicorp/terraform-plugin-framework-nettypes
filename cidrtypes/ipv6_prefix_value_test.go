@@ -9,9 +9,13 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
+	"github.com/hashicorp/terraform-plugin-framework/attr/xattr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/function"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
 )
 
 func TestIPv6PrefixStringSemanticEquals(t *testing.T) {
@@ -110,6 +114,264 @@ func TestIPv6PrefixStringSemanticEquals(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(diags, testCase.expectedDiags); diff != "" {
+				t.Errorf("Unexpected diagnostics (-got, +expected): %s", diff)
+			}
+		})
+	}
+}
+
+func TestIPv6PrefixValidateAttribute(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		prefixValue   cidrtypes.IPv6Prefix
+		expectedDiags diag.Diagnostics
+	}{
+		"empty-struct": {
+			prefixValue: cidrtypes.IPv6Prefix{},
+		},
+		"null": {
+			prefixValue: cidrtypes.NewIPv6PrefixNull(),
+		},
+		"unknown": {
+			prefixValue: cidrtypes.NewIPv6PrefixUnknown(),
+		},
+		"valid IPv6 prefix - unspecified": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("::/128"),
+		},
+		"valid IPv6 prefix - full": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("2001:0DB8:0:0:0:0:0:0CD3/60"),
+		},
+		"valid IPv6 prefix - trailing double colon": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("FF00:0:0:0:0:0:0:0/8"),
+		},
+		"valid IPv6 prefix - leading double colon": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("0:0:0:0:0:0:0:0/128"),
+		},
+		"valid IPv6 prefix - middle double colon": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("2001:0DB8:0:0:0:0:0:0CD3/60"),
+		},
+		"valid IPv6 prefix - lowercase": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("2001:0db8:0:0:0:0:0:0cd3/60"),
+		},
+		"valid IPv6 prefix - IPv4-Mapped": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("::FFFF:1.2.3.0/112"),
+		},
+		"valid IPv6 prefix - IPv4-Compatible": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("::1.2.3.0/112"),
+		},
+		"invalid IPv6 prefix - invalid address colon end": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("0:0:0:0:0:0:0:/128"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv6 CIDR String Value",
+					"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+						"Given Value: 0:0:0:0:0:0:0:/128\n"+
+						"Error: netip.ParsePrefix(\"0:0:0:0:0:0:0:/128\"): ParseAddr(\"0:0:0:0:0:0:0:\"): colon must be followed by more characters (at \":\")",
+				),
+			},
+		},
+		"invalid IPv6 prefix - address too many colons": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("0:0::1::/112"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv6 CIDR String Value",
+					"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+						"Given Value: 0:0::1::/112\n"+
+						"Error: netip.ParsePrefix(\"0:0::1::/112\"): ParseAddr(\"0:0::1::\"): multiple :: in address (at \":\")",
+				),
+			},
+		},
+		"invalid IPv6 prefix - address trailing numbers": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("0:0:0:0:0:0:0:1:99/112"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv6 CIDR String Value",
+					"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+						"Given Value: 0:0:0:0:0:0:0:1:99/112\n"+
+						"Error: netip.ParsePrefix(\"0:0:0:0:0:0:0:1:99/112\"): ParseAddr(\"0:0:0:0:0:0:0:1:99\"): trailing garbage after address (at \"99\")",
+				),
+			},
+		},
+		"invalid IPv6 prefix - invalid prefix length": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("FF00::/999"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv6 CIDR String Value",
+					"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+						"Given Value: FF00::/999\n"+
+						"Error: netip.ParsePrefix(\"FF00::/999\"): prefix length out of range",
+				),
+			},
+		},
+		"invalid IPv6 prefix - invalid prefix characters": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("FF00::/notcorrect"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv6 CIDR String Value",
+					"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+						"Given Value: FF00::/notcorrect\n"+
+						"Error: netip.ParsePrefix(\"FF00::/notcorrect\"): bad bits after slash: \"notcorrect\"",
+				),
+			},
+		},
+		"invalid IPv6 prefix - IPv4 prefix": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("172.16.0.0/12"),
+			expectedDiags: diag.Diagnostics{
+				diag.NewAttributeErrorDiagnostic(
+					path.Root("test"),
+					"Invalid IPv6 CIDR String Value",
+					"An IPv4 CIDR string format was provided, string value must be IPv6 CIDR string format (RFC 4291).\n\n"+
+						"Given Value: 172.16.0.0/12\n",
+				),
+			},
+		},
+	}
+
+	for name, testCase := range testCases {
+		name, testCase := name, testCase
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			resp := xattr.ValidateAttributeResponse{}
+
+			testCase.prefixValue.ValidateAttribute(
+				context.Background(),
+				xattr.ValidateAttributeRequest{
+					Path: path.Root("test"),
+				},
+				&resp,
+			)
+
+			if diff := cmp.Diff(resp.Diagnostics, testCase.expectedDiags); diff != "" {
+				t.Errorf("Unexpected diagnostics (-got, +expected): %s", diff)
+			}
+		})
+	}
+}
+
+func TestIPv6PrefixValidateParameter(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		prefixValue     cidrtypes.IPv6Prefix
+		expectedFuncErr *function.FuncError
+	}{
+		"empty-struct": {
+			prefixValue: cidrtypes.IPv6Prefix{},
+		},
+		"null": {
+			prefixValue: cidrtypes.NewIPv6PrefixNull(),
+		},
+		"unknown": {
+			prefixValue: cidrtypes.NewIPv6PrefixUnknown(),
+		},
+		"valid IPv6 prefix - unspecified": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("::/128"),
+		},
+		"valid IPv6 prefix - full": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("2001:0DB8:0:0:0:0:0:0CD3/60"),
+		},
+		"valid IPv6 prefix - trailing double colon": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("FF00:0:0:0:0:0:0:0/8"),
+		},
+		"valid IPv6 prefix - leading double colon": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("0:0:0:0:0:0:0:0/128"),
+		},
+		"valid IPv6 prefix - middle double colon": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("2001:0DB8:0:0:0:0:0:0CD3/60"),
+		},
+		"valid IPv6 prefix - lowercase": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("2001:0db8:0:0:0:0:0:0cd3/60"),
+		},
+		"valid IPv6 prefix - IPv4-Mapped": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("::FFFF:1.2.3.0/112"),
+		},
+		"valid IPv6 prefix - IPv4-Compatible": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("::1.2.3.0/112"),
+		},
+		"invalid IPv6 prefix - invalid address colon end": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("0:0:0:0:0:0:0:/128"),
+			expectedFuncErr: function.NewArgumentFuncError(
+				0,
+				"Invalid IPv6 CIDR String Value: "+
+					"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+					"Given Value: 0:0:0:0:0:0:0:/128\n"+
+					"Error: netip.ParsePrefix(\"0:0:0:0:0:0:0:/128\"): ParseAddr(\"0:0:0:0:0:0:0:\"): colon must be followed by more characters (at \":\")",
+			),
+		},
+		"invalid IPv6 prefix - address too many colons": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("0:0::1::/112"),
+			expectedFuncErr: function.NewArgumentFuncError(
+				0,
+				"Invalid IPv6 CIDR String Value: "+
+					"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+					"Given Value: 0:0::1::/112\n"+
+					"Error: netip.ParsePrefix(\"0:0::1::/112\"): ParseAddr(\"0:0::1::\"): multiple :: in address (at \":\")",
+			),
+		},
+		"invalid IPv6 prefix - address trailing numbers": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("0:0:0:0:0:0:0:1:99/112"),
+			expectedFuncErr: function.NewArgumentFuncError(
+				0,
+				"Invalid IPv6 CIDR String Value: "+
+					"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+					"Given Value: 0:0:0:0:0:0:0:1:99/112\n"+
+					"Error: netip.ParsePrefix(\"0:0:0:0:0:0:0:1:99/112\"): ParseAddr(\"0:0:0:0:0:0:0:1:99\"): trailing garbage after address (at \"99\")",
+			),
+		},
+		"invalid IPv6 prefix - invalid prefix length": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("FF00::/999"),
+			expectedFuncErr: function.NewArgumentFuncError(
+				0,
+				"Invalid IPv6 CIDR String Value: "+
+					"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+					"Given Value: FF00::/999\n"+
+					"Error: netip.ParsePrefix(\"FF00::/999\"): prefix length out of range",
+			),
+		},
+		"invalid IPv6 prefix - invalid prefix characters": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("FF00::/notcorrect"),
+			expectedFuncErr: function.NewArgumentFuncError(
+				0,
+				"Invalid IPv6 CIDR String Value: "+
+					"A string value was provided that is not valid IPv6 CIDR string format (RFC 4291).\n\n"+
+					"Given Value: FF00::/notcorrect\n"+
+					"Error: netip.ParsePrefix(\"FF00::/notcorrect\"): bad bits after slash: \"notcorrect\"",
+			),
+		},
+		"invalid IPv6 prefix - IPv4 prefix": {
+			prefixValue: cidrtypes.NewIPv6PrefixValue("172.16.0.0/12"),
+			expectedFuncErr: function.NewArgumentFuncError(
+				0,
+				"Invalid IPv6 CIDR String Value: "+
+					"An IPv4 CIDR string format was provided, string value must be IPv6 CIDR string format (RFC 4291).\n\n"+
+					"Given Value: 172.16.0.0/12\n",
+			),
+		},
+	}
+
+	for name, testCase := range testCases {
+		name, testCase := name, testCase
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			resp := function.ValidateParameterResponse{}
+
+			testCase.prefixValue.ValidateParameter(
+				context.Background(),
+				function.ValidateParameterRequest{
+					Position: 0,
+				},
+				&resp,
+			)
+
+			if diff := cmp.Diff(resp.Error, testCase.expectedFuncErr); diff != "" {
 				t.Errorf("Unexpected diagnostics (-got, +expected): %s", diff)
 			}
 		})
