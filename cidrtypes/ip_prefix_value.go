@@ -132,7 +132,7 @@ func (v IPPrefix) ValidateParameter(ctx context.Context, req function.ValidatePa
 		resp.Error = function.NewArgumentFuncError(
 			req.Position,
 			"Invalid IP CIDR String Value: "+
-				"A string value was provided that is not valid IPv4 or IPv6 CIDR string format (RFC 4632, 4291).\n\n"+
+				"A string value was provided that is not valid IPv4 or IPv6 CIDR string format (RFC 4632, RFC 4291).\n\n"+
 				"Given Value: "+v.ValueString()+"\n"+
 				"Error: "+err.Error(),
 		)
