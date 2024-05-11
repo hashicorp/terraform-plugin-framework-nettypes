@@ -87,12 +87,27 @@ func TestIPPrefixStringSemanticEquals(t *testing.T) {
 			givenIpPrefix:   cidrtypes.NewIPPrefixValue("::FFFF:1.2.3.4/112"),
 			expectedMatch:   true,
 		},
-		"semantically equal - IPv4 match": {
+		"semantically equal - IPv4 loopback match": {
+			currentIpPrefix: cidrtypes.NewIPPrefixValue("127.0.0.0/8"),
+			givenIpPrefix:   cidrtypes.NewIPPrefixValue("127.0.0.0/8"),
+			expectedMatch:   true,
+		},
+		"semantically equal - IPv4 private match": {
+			currentIpPrefix: cidrtypes.NewIPPrefixValue("172.16.0.0/12"),
+			givenIpPrefix:   cidrtypes.NewIPPrefixValue("172.16.0.0/12"),
+			expectedMatch:   true,
+		},
+		"semantically equal - IPv4 public match": {
 			currentIpPrefix: cidrtypes.NewIPPrefixValue("104.28.204.175/32"),
 			givenIpPrefix:   cidrtypes.NewIPPrefixValue("104.28.204.175/32"),
 			expectedMatch:   true,
 		},
-		"semantically equal - IPv4 mismatch": {
+		"semantically equal - IPv4 mask mismatch": {
+			currentIpPrefix: cidrtypes.NewIPPrefixValue("104.28.204.175/32"),
+			givenIpPrefix:   cidrtypes.NewIPPrefixValue("104.28.204.175/31"),
+			expectedMatch:   false,
+		},
+		"semantically equal - IPv4 address mismatch": {
 			currentIpPrefix: cidrtypes.NewIPPrefixValue("104.28.204.175/32"),
 			givenIpPrefix:   cidrtypes.NewIPPrefixValue("104.28.204.174/32"),
 			expectedMatch:   false,
