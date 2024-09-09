@@ -1,6 +1,0 @@
-kind: ENHANCEMENTS
-body: 'iptypes: Added `ValidateParameter()` method to `IPv4Address` type, which supports
-  validating a provider-defined function parameter value'
-time: 2024-04-24T14:42:32.380815+01:00
-custom:
-  Issue: "55"

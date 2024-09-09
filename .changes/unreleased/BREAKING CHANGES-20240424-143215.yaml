@@ -1,6 +1,0 @@
-kind: BREAKING CHANGES
-body: 'cidrtypes: Removed `Validate()` method from `IPv4PrefixType` following deprecation
-  of `xattr.TypeWithValidate`'
-time: 2024-04-24T14:32:15.439618+01:00
-custom:
-  Issue: "55"

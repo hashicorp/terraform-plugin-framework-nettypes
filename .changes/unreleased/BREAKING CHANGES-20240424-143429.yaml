@@ -1,6 +1,0 @@
-kind: BREAKING CHANGES
-body: 'iptypes: Removed `Validate()` method from `IPv6AddressType` following deprecation
-  of `xattr.TypeWithValidate`'
-time: 2024-04-24T14:34:29.788612+01:00
-custom:
-  Issue: "55"
