@@ -128,7 +128,6 @@ func TestIPPrefixStringSemanticEquals(t *testing.T) {
 		},
 	}
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -314,7 +313,6 @@ func TestIPPrefixValidateAttribute(t *testing.T) {
 	}
 
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -484,7 +482,6 @@ func TestIPPrefixValidateParameter(t *testing.T) {
 	}
 
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -541,7 +538,6 @@ func TestIPPrefixValueIPPrefix(t *testing.T) {
 		},
 	}
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
