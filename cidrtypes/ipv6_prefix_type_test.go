@@ -54,7 +54,7 @@ func TestIPv6PrefixTypeValueFromTerraform(t *testing.T) {
 				}
 				return
 			}
-			if err == nil && testCase.expectedErr != "" {
+			if testCase.expectedErr != "" {
 				t.Fatalf("Expected error to be %q, didn't get an error", testCase.expectedErr)
 			}
 			if !got.Equal(testCase.expectation) {
