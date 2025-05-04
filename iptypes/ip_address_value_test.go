@@ -63,7 +63,7 @@ func TestIPAddressStringSemanticEquals(t *testing.T) {
 			expectedMatch: true,
 		},
 		"semantically equal - compressed all leading zeroes match": {
-			currentIpAddr: iptypes.NewIPAddressValue("2001:0DB8:0000:0000:0008:0800:0200C:417A"),
+			currentIpAddr: iptypes.NewIPAddressValue("2001:0DB8:0000:0000:0008:0800:200C:417A"),
 			givenIpAddr:   iptypes.NewIPAddressValue("2001:DB8::8:800:200C:417A"),
 			expectedMatch: true,
 		},
