@@ -1,5 +1,4 @@
 // Copyright (c) HashiCorp, Inc.
-// Copyright (c) Christopher Marget
 // SPDX-License-Identifier: MPL-2.0
 
 package hwtypes_test
