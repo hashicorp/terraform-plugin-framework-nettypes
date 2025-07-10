@@ -1,3 +1,14 @@
+## 0.3.0 (July 10, 2025)
+
+NOTES:
+
+* all: This Go module has been updated to Go 1.23 per the [Go support policy](https://go.dev/doc/devel/release#policy). It is recommended to review the [Go 1.23 release notes](https://go.dev/doc/go1.23) before upgrading. Any consumers building on earlier Go versions may experience errors. ([#109](https://github.com/hashicorp/terraform-plugin-framework-nettypes/issues/109))
+
+FEATURES:
+
+* New Custom Types: IPAddress and IPPrefix (Union of IP v4 and v6) ([#6](https://github.com/hashicorp/terraform-plugin-framework-nettypes/issues/6))
+* hwtypes/MACAddress: Add new MACAddressType custom type implementation, representing a MAC address string ([#127](https://github.com/hashicorp/terraform-plugin-framework-nettypes/issues/127))
+
 ## 0.2.0 (September 09, 2024)
 
 BREAKING CHANGES:

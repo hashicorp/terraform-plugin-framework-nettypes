@@ -1,6 +1,0 @@
-kind: FEATURES
-body: 'hwtypes/MACAddress: Add new MACAddressType custom type implementation, representing
-  a MAC address string'
-time: 2025-07-09T14:31:31.228503-04:00
-custom:
-  Issue: "127"
